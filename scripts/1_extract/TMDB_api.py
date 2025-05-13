@@ -43,7 +43,7 @@ def get_movies_on_page(headers, getNumPages = False, page=1):
             return pd.DataFrame(results), errors
     
     else: 
-        errors.append(f"Error {response.status_code} on page {page}")
+        errors.append(f"TMDB - Movies - Error {response.status_code} on page {page}")
         return pd.DataFrame(), errors
 
 
@@ -54,7 +54,8 @@ def get_top_rated_movies(headers):
         page_result, errors = get_movies_on_page(headers, page=i)
         
         total_result = pd.concat([total_result, page_result], ignore_index=True)
-        
+    
+    total_result["origin"] = 'TMDB'
     total_result["type"] = 'movie'
     
     return total_result, errors
@@ -83,7 +84,7 @@ def get_shows_on_page(headers, getNumPages = False, page=1):
             return pd.DataFrame(results), errors
     
     else: 
-        errors.append(f"Error {response.status_code} on page {page}")
+        errors.append(f"TMDB - Shows - Error {response.status_code} on page {page}")
         return pd.DataFrame(), errors
 
 
@@ -95,6 +96,7 @@ def get_top_rated_shows(headers):
         
         total_result = pd.concat([total_result, page_result], ignore_index=True)
     
+    total_result["origin"] = 'TMDB'
     total_result["type"] = 'show'
     
     return total_result, errors
@@ -106,12 +108,16 @@ if __name__ == '__main__':
         movies, movies_errors = get_top_rated_movies(HEADERS)
         shows, shows_errors = get_top_rated_shows(HEADERS)
         
-        BASE_DIR = Path(__file__).resolve().parent.parent.parent  # <- cwd = scripts/extract/
+        total_errors = movies_errors + shows_errors
+        print("Errors during the extraction: ", total_errors)
+        
+        BASE_DIR = Path(__file__).resolve().parent.parent.parent
         RAW_DIR = BASE_DIR / "data" / "1_raw"
 
         movies_absolute_path = f"{RAW_DIR}\\TMDB\\TMDB_top_rated_movies.csv"
         shows_absolute_path = f"{RAW_DIR}\\TMDB\\TMDB_top_rated_shows.csv"
 
+        # Movies and shows have different columns, need to be transformed later
         movies.to_csv(movies_absolute_path, sep=';')
         shows.to_csv(shows_absolute_path, sep=';')
 
