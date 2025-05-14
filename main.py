@@ -1,4 +1,12 @@
 
 
 if __name__=='__main__':
-    print("Movie rating")
+    
+    # Extraction
+    pass
+    
+    # Transformation
+    pass
+
+    # Load
+    pass

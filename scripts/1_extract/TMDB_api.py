@@ -99,10 +99,32 @@ def get_top_rated_shows(headers, language='es-ES'):
     
     return total_result, errors
 
-
+def get_movie_genres(headers, language='es-ES'):
+    url = f"https://api.themoviedb.org/3/genre/movie/list?language={language}"
+    
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        data = response.json()
+        return pd.DataFrame(data.get('genres'))
+    
+    else:
+        return f"Error getting MOVIE genres - Status Code: {response.status_code}"
+    
+def get_shows_genres(headers, language='es-ES'):
+    url = f"https://api.themoviedb.org/3/genre/tv/list?language={language}"
+    
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        data = response.json()
+        return pd.DataFrame(data.get('genres'))
+    
+    else:
+        return f"Error getting SHOWS genres - Status Code: {response.status_code}"
 
 if __name__ == '__main__':
-        
+    
     if check_authentication(HEADERS):
         
         # Extraction in es-ES
@@ -113,30 +135,39 @@ if __name__ == '__main__':
         movies_EN, movies_errors = get_top_rated_movies(HEADERS, language='en-US')
         shows_EN, shows_errors = get_top_rated_shows(HEADERS, language='en-US')
         
-        # Merge ES-EN
+        # Merge all of es-ES with titles in en-US
         movies_titles_EN = movies_EN[["id", "title"]].rename(columns={"title": "title_EN"})
-        result_movies = movies_ES.merge(movies_titles_EN, on='id', how='left').rename(columns={"title": "title_ES"})
+        result_movies = movies_ES.merge(movies_titles_EN, on='id', how='left').rename(columns={"title": "title_ES"}).sort_values(by=['vote_average', 'vote_count'], ascending=False)
         
         shows_titles_EN = shows_EN[["id", "name"]].rename(columns={"name": "title_EN"})
-        result_shows = shows_ES.merge(shows_titles_EN, on='id', how='left').rename(columns={"name": "title_ES"})
+        result_shows = shows_ES.merge(shows_titles_EN, on='id', how='left').rename(columns={"name": "title_ES"}).sort_values(by=['vote_average', 'vote_count'], ascending=False)
         
-        # Errors during process
+        # Show errors during process
         total_errors = movies_errors + shows_errors
         print("Errors during the extraction: ", total_errors)
         
+        # Extraction of movie-shows genres
+        movie_genres = get_movie_genres(HEADERS)
+        shows_genres = get_shows_genres(HEADERS)
+        
         # Save files
         BASE_DIR = Path(__file__).resolve().parent.parent.parent
-        RAW_DIR = BASE_DIR / "data" / "1_raw"
+        RAW_DIR = BASE_DIR / "data" / "1_bronze"
 
-        movies_absolute_path = f"{RAW_DIR}\\TMDB\\TMDB_top_rated_movies.csv"
-        shows_absolute_path = f"{RAW_DIR}\\TMDB\\TMDB_top_rated_shows.csv"
+        movies_absolute_path = f"{RAW_DIR}\\TMDB_top_rated_movies.csv"
+        shows_absolute_path = f"{RAW_DIR}\\TMDB_top_rated_shows.csv"
+        movies_genres_path = f"{RAW_DIR}\\TMDB_movies_genres.csv"
+        shows_genres_path = f"{RAW_DIR}\\TMDB_shows_genres.csv"
         
         # Movies and shows have different columns, need to be merged later
         result_movies.to_csv(movies_absolute_path, sep=';')
         result_shows.to_csv(shows_absolute_path, sep=';')
-
+        movie_genres.to_csv(movies_genres_path, sep=';')
+        shows_genres.to_csv(shows_genres_path, sep=';')
+        
         print(f"TMDB - Movies file saved on: {movies_absolute_path}")
         print(f"TMDB - Shows file saved on: {shows_absolute_path}")
-
+        
     else: 
         print('ERROR: Connection to API failed')
+    
