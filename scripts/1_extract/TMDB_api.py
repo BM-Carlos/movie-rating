@@ -123,6 +123,25 @@ def get_shows_genres(headers, language='es-ES'):
     else:
         return f"Error getting SHOWS genres - Status Code: {response.status_code}"
 
+def get_watch_providers(headers, movie_id, type, selected_language = 'ES'):
+    """
+     - Type can be 'movie' or 'tv' (for shows)
+    """
+    url = f"https://api.themoviedb.org/3/{type}/{movie_id}/watch/providers"
+
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        data = response.json()
+        filter_language = data.get("results").get(selected_language)
+        flatrate_options = filter_language.get("flatrate") # Only interested in the ones that are included in subscriptions
+        providers_list = [provider.get('provider_name') for provider in flatrate_options]
+        
+        return {id: providers_list}
+    else:
+        print("Error getting watch provider")
+
+    
 if __name__ == '__main__':
     
     if check_authentication(HEADERS):
@@ -130,7 +149,7 @@ if __name__ == '__main__':
         # Extraction in es-ES
         movies_ES, movies_errors = get_top_rated_movies(HEADERS)
         shows_ES, shows_errors = get_top_rated_shows(HEADERS)
-
+        
         # Extraction in en-US (later needed to search in OMDB)
         movies_EN, movies_errors = get_top_rated_movies(HEADERS, language='en-US')
         shows_EN, shows_errors = get_top_rated_shows(HEADERS, language='en-US')
@@ -143,12 +162,15 @@ if __name__ == '__main__':
         result_shows = shows_ES.merge(shows_titles_EN, on='id', how='left').rename(columns={"name": "title_ES"}).sort_values(by=['vote_average', 'vote_count'], ascending=False)
         
         # Show errors during process
-        total_errors = movies_errors + shows_errors
-        print("Errors during the extraction: ", total_errors)
+        print("Errors during the extraction: ", movies_errors + shows_errors)
         
         # Extraction of movie-shows genres
         movie_genres = get_movie_genres(HEADERS)
         shows_genres = get_shows_genres(HEADERS)
+        
+        # Extraction of watch providers for the data we have
+        watch_providers_movies = movies_ES["id"].apply(lambda movie_id: get_watch_providers(HEADERS, movie_id, 'movie'))
+        watch_providers_shows = movies_ES["id"].apply(lambda movie_id: get_watch_providers(HEADERS, movie_id, 'tv'))
         
         # Save files
         BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -156,18 +178,27 @@ if __name__ == '__main__':
 
         movies_absolute_path = f"{RAW_DIR}\\TMDB_top_rated_movies.csv"
         shows_absolute_path = f"{RAW_DIR}\\TMDB_top_rated_shows.csv"
+        
         movies_genres_path = f"{RAW_DIR}\\TMDB_movies_genres.csv"
         shows_genres_path = f"{RAW_DIR}\\TMDB_shows_genres.csv"
+        
+        watch_providers_movies_path = f"{RAW_DIR}\\TMDB_watch_providers_movies.csv"
+        watch_providers_shows_path = f"{RAW_DIR}\\TMDB_watch_providers_shows.csv"
         
         # Movies and shows have different columns, need to be merged later
         result_movies.to_csv(movies_absolute_path, sep=';')
         result_shows.to_csv(shows_absolute_path, sep=';')
+        
         movie_genres.to_csv(movies_genres_path, sep=';')
         shows_genres.to_csv(shows_genres_path, sep=';')
         
+        watch_providers_movies.to_csv(watch_providers_movies_path, sep=';')
+        watch_providers_shows.to_csv(watch_providers_shows_path, sep=';')
+        
         print(f"TMDB - Movies file saved on: {movies_absolute_path}")
         print(f"TMDB - Shows file saved on: {shows_absolute_path}")
-        
+         
     else: 
         print('ERROR: Connection to API failed')
     
+   
