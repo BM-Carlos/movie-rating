@@ -16,7 +16,7 @@ HEADERS = {
 }
 
 logging.basicConfig(
-    filename="movie-rating/logs/api_extraction.log",   
+    filename="logs/api_extraction.log",   
     level=logging.INFO,             
     format="%(asctime)s - %(levelname)s - %(message)s" 
 )
@@ -129,11 +129,15 @@ def get_shows_genres(headers, language='es-ES'):
     else:
         return f"Error getting SHOWS genres - Status Code: {response.status_code}"
 
-def get_watch_providers(headers, movie_id, type, selected_language = 'ES'):
+def get_watch_providers(headers, data_id, type, selected_language = 'ES'):
     """
      - Type can be 'movie' or 'tv' (for shows)
     """
-    url = f"https://api.themoviedb.org/3/{type}/{movie_id}/watch/providers"
+    if type not in ['movie', 'tv']:
+        logging.info(f"TMDB API - Type {type} is not an option")
+        pass
+    
+    url = f"https://api.themoviedb.org/3/{type}/{data_id}/watch/providers"
 
     response = requests.get(url, headers=headers)
     
@@ -144,16 +148,16 @@ def get_watch_providers(headers, movie_id, type, selected_language = 'ES'):
             flatrate_options = filter_language.get("flatrate") # Only interested in the ones that are included in subscriptions (flatrate)
             if flatrate_options: 
                 providers_list = [provider.get('provider_name') for provider in flatrate_options]
-                return {movie_id: providers_list}
+                return (data_id, providers_list)
             else: 
-                logging.info(f"TMDB API - Flatrate option for {type}: {movie_id} not found")
-                return []
+                logging.info(f"TMDB API - Flatrate option for {type}: {data_id} not found")
+                return (data_id, [])
         else: 
-            logging.info(f"TMDB API - Language '{selected_language}' for the {type}: {movie_id} not found")
-            return []
+            logging.info(f"TMDB API - Language '{selected_language}' for the {type}: {data_id} not found")
+            return (data_id, [])
     else:
         logging.info("TMDB API - Error getting watch provider")
-        return []
+        return (data_id, [])
     
 if __name__ == '__main__':
     
@@ -181,10 +185,16 @@ if __name__ == '__main__':
         movie_genres = get_movie_genres(HEADERS)
         shows_genres = get_shows_genres(HEADERS)
         
-        # Extraction of watch providers for the data we have
-        watch_providers_movies = movies_ES["id"][:2000].apply(lambda movie_id: get_watch_providers(HEADERS, movie_id, 'movie'))
-        watch_providers_shows = movies_ES["id"][:2000].apply(lambda movie_id: get_watch_providers(HEADERS, movie_id, 'tv'))
+        # Extraction of watch providers for the first 2k records to simplify
         
+        print("TMDB - Retrieving watch providers...")
+        watch_providers_movies = movies_ES["id"][:2000].apply(lambda movie_id: get_watch_providers(HEADERS, movie_id, 'movie'))
+        watch_providers_movies = pd.DataFrame(watch_providers_movies.tolist(), columns=["id", "watch_providers"])
+        
+        watch_providers_shows = shows_ES["id"][:2000].apply(lambda movie_id: get_watch_providers(HEADERS, movie_id, 'tv'))
+        watch_providers_shows = pd.DataFrame(watch_providers_shows.tolist(), columns=["id", "watch_providers"])
+        print("TMDB - Retrieving watch providers done")
+         
         # Save files
         BASE_DIR = Path(__file__).resolve().parent.parent.parent
         RAW_DIR = BASE_DIR / "data" / "1_bronze"
