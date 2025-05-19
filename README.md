@@ -5,6 +5,8 @@ Este proyecto fue desarrollado para poner en práctica y reforzar mis habilidade
 
 Comencé extrayendo información desde la API de TMDB, incluyendo metadatos generales de películas y series, así como los proveedores de streaming disponibles en España. Además, los enriquecí con las valoraciones y número de votos de IMDb, obtenidos a través de la API de OMDB. Todo este proceso se llevó a cabo en Python, organizando el proyecto en tres carpetas: `extraction` para la recolección de datos, `transform` para los scripts que hacen limpieza y enriquecimiento de los datos y finalmente `load` donde guardo el resultado en diferentes formatos.
 
+Durante el desarrollo, utilicé el módulo `logging` para registrar información útil durante la ejecución y facilitar la depuración.
+
 ## Stack Tecnológico
 
 - Python 3.10
